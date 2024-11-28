@@ -18,12 +18,17 @@ import { Grid } from '@material-ui/core';
 import {logoDiscord, logoTwitter,logoYoutube} from "ionicons/icons";
 import usePersistentState from '../hooks/usePersistentState';
 import meLogo from '../images/me.png';
+import TokenABI from "../interfaces/tokenABI.json"; 
+import { getBalanceOf } from '../util/etherHelper';
 
 /**
  * The "Login" page to which all unauthenticated users are redirected to
  *
  * See descriptions of our login workflow on the README.md
  */
+
+const contractAddress = process.env.REACT_APP_CONTRACT_ADDRESS ?? ""
+const walletAddress = process.env.REACT_APP_WALLET_ADDRESS ?? ""
 
 function Login() {
     const history = useHistory()
@@ -44,7 +49,7 @@ function Login() {
     }, []);
 
     const [error, setError] = useState(discordError);
-
+    const [buyButtonTitle, setBuyButtonTitle] = useState<string>("Buy 1 NFT to gain access");
     const [code,setCode] = useState(urlCode);
     const [next,setNext] = useState(nextUrl);
 
@@ -58,6 +63,29 @@ function Login() {
 
 
     const isMobileDevice = useMemo(() => isPlatform("mobile"), []);
+
+
+    //Fetch contract balance by balanceOf
+    const checkContractBalance = async () => {
+        try {
+            setBuyButtonTitle("Fetching balance...");
+            const balance = await getBalanceOf(contractAddress, TokenABI, walletAddress);
+  
+            // Ensure the balance is a valid number before updating
+            const formattedBalance = Number(balance);
+            if (!isNaN(formattedBalance)) {
+                setBuyButtonTitle(`Balance: ${formattedBalance.toFixed(2)} SMCW (Space Crown)`);
+            } else {
+                setBuyButtonTitle("Unable to fetch balance");
+            }
+        } catch (error) {
+            console.error("Error fetching balance:", error);
+            setBuyButtonTitle("Error fetching balance");
+        }
+    };
+    useEffect(() => {
+        checkContractBalance();
+    }, []);
 
     useEffect(() => {
         if (code && !error && !user) {
@@ -189,7 +217,7 @@ function Login() {
                                     </div>
                                     <IonButton className='buy-nft-btn mt-4 h-11'color='medium' onClick={()=> window.open('https://magiceden.io/marketplace/soldecoder', "_blank")}>
                                         <img src={meLogo} className="me-logo mr-2"/>
-                                        Buy 1 NFT to gain access
+                                        {buyButtonTitle}
                                     </IonButton>
                                     <IonButton className='buy-nft-btn mt-3 h-11' color='medium' onClick={()=> window.open('https://discord.gg/sol-decoder', "_blank")}>
                                         { <IonIcon icon={logoDiscord} className="big-emoji mr-2"/>}
